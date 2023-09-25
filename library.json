@@ -14,6 +14,14 @@
       "url": "https://www.rajzer.dev/contact"
     }
   ],
+  "exclude": [
+    "/src/Examples/",
+    ".vscode",
+    ".gitignore",
+    "README.md",
+    "LICENSE",
+    "platformio.ini"
+  ],
   "license": "MIT",
   "homepage": "https://www.helloworld.org/",
   "dependencies": {},
