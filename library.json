@@ -23,7 +23,7 @@
     "platformio.ini"
   ],
   "license": "MIT",
-  "homepage": "https://www.helloworld.org/",
+  "homepage": "https://github.com/MichalRajzer/ESP-Meshed",
   "dependencies": {},
   "frameworks": ["Arduino"],
   "platforms": ["espressif32", "espressif8266"]
