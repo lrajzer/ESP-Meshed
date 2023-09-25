@@ -1,10 +1,11 @@
 #include <Arduino.h>
 #include <vector>
-#include <esp_now.h>
 #ifdef ESP32
+#include <esp_now.h>
 #include <WiFi.h>
 #elif defined(ESP8266)
 #include <ESP8266WiFi.h>
+#include <espnow.h>
 #endif
 
 // TODO: ADD SLAVE BROADCAST
@@ -75,7 +76,10 @@ private:
     uint16_t _nodeId;
     std::vector<std::pair<uint16_t, uint32_t>> _message_id_buffer;
     uint8_t _cleanup_time = 5; // Cleanup time in seconds
+#ifdef ESP32
     esp_now_peer_info_t _peerInfo = {};
+#endif
+
     uint8_t _broadcastAddress[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
     void (*_receiveHandler)(uint8_t *data, uint8_t len, uint16_t sender) = NULL;
     uint16_t getIDfromHeader(const uint8_t *header)
@@ -146,7 +150,12 @@ private:
 
         return header;
     }
+
+#ifdef ESP32
     uint8_t _retransmit(const uint8_t *data, uint8_t len)
+#elif defined(ESP8266)
+    uint8_t _retransmit(uint8_t *data, uint8_t len)
+#endif
     {
 #ifdef DEBUG_ESP_MESHED
         Serial.print("Message id: ");
@@ -160,6 +169,7 @@ private:
 
 #endif
 
+#ifdef ESP32
         switch (esp_now_send(this->_broadcastAddress, data, len))
         {
         case ESP_OK:
@@ -168,6 +178,9 @@ private:
         default:
             return 1;
         }
+#elif defined(ESP8266)
+        return esp_now_send(this->_broadcastAddress, data, len);
+#endif
     }
 
     bool _wasRetransmited(const uint8_t *data, uint8_t len)
@@ -235,7 +248,11 @@ private:
         this->_commonSetup();
         // get esp mac addr
         uint8_t mac[6];
+#ifdef ESP32
         esp_efuse_mac_get_default(mac);
+#elif defined(ESP8266)
+        WiFi.macAddress(mac);
+#endif
         this->_nodeId = (mac[0] << 11 | mac[4] << 7 | mac[2] >> 3) & 0x0FFF;
         this->_cleanup_time = 1;
         this->_receiveHandler = nullptr;
@@ -270,6 +287,7 @@ public:
         uint8_t *message = new uint8_t[len + 5];
         memcpy(message, header, 5);
         memcpy(message + 5, data, len);
+#ifdef ESP32
         esp_err_t msg_sent = esp_now_send(this->_broadcastAddress, message, len + 5);
         delete[] header;
         delete[] message;
@@ -292,6 +310,12 @@ public:
         default:
             return 8;
         }
+#elif defined(ESP8266)
+        uint8_t msg_sent = esp_now_send(this->_broadcastAddress, message, len + 5);
+        delete[] header;
+        delete[] message;
+        return msg_sent;
+#endif
     }
 
     void setReceiveHandler(void (*handler)(uint8_t *data, uint8_t len, uint16_t sender))
@@ -326,8 +350,11 @@ public:
 
     ESPMeshedNode(ESPMeshedNode const &) = delete;
     void operator=(ESPMeshedNode const &) = delete;
-
+#ifdef ESP32
     void _handlePackage(const uint8_t *mac, const uint8_t *incoming, int len)
+#elif defined(ESP8266)
+    void _handlePackage(uint8_t *mac, uint8_t *incoming, int len)
+#endif
     {
 #ifdef DEBUG_ESP_MESHED
         Serial.println("Handling package");
@@ -370,7 +397,11 @@ ESPMeshedNode *ESPMeshedNode::GetInstance()
     return ESPMeshedNodeInstance;
 }
 
+#ifdef ESP32
 static void _handlePackageStatic(const uint8_t *mac, const uint8_t *incoming, int len)
+#elif defined(ESP8266)
+static void _handlePackageStatic(uint8_t *mac, uint8_t *incoming, uint8_t len)
+#endif
 {
     ESPMeshedNode::GetInstance()->_handlePackage(mac, incoming, len);
 }
@@ -379,7 +410,11 @@ void ESPMeshedNode::_commonSetup()
 {
     WiFi.mode(WIFI_STA);
     WiFi.disconnect();
+#ifdef ESP32
     if (esp_now_init() != ESP_OK)
+#elif defined(ESP8266)
+    if (esp_now_init() != 0)
+#endif
     {
 #ifdef DEBUG_ESP_MESHED
         Serial.println("Error initializing ESP-NOW");
@@ -387,10 +422,12 @@ void ESPMeshedNode::_commonSetup()
         return;
     }
     esp_now_register_recv_cb(_handlePackageStatic);
+#ifdef ESP32
     memcpy(this->_peerInfo.peer_addr, this->_broadcastAddress, 6);
     this->_peerInfo.channel = 0;
     this->_peerInfo.encrypt = false;
     esp_now_add_peer(&this->_peerInfo);
+#endif
 }
 
 ESPMeshedNode *GetESPMeshedNode(int ID, void (*handler)(uint8_t *data, uint8_t len, uint16_t sender))
