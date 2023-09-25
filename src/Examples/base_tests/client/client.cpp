@@ -1,3 +1,6 @@
+#define BASE_CLIENT
+
+#ifdef BASE_CLIENT
 #include "esp-meshed.h"
 #include <Arduino.h>
 
@@ -8,10 +11,12 @@ struct transceivedata
     uint8_t light;
 };
 
-void receiveHandler(uint8_t *data, uint8_t len)
+void receiveHandler(uint8_t *data, uint8_t len, uint16_t from)
 {
     transceivedata *received = (transceivedata *)data;
-    Serial.print("RECEIVED data: ");
+    Serial.print("RECEIVED data from: ");
+    Serial.print(from);
+    Serial.print("data: ");
     Serial.print(received->temp);
     Serial.print(" ");
     Serial.print(received->hum);
@@ -43,14 +48,14 @@ transceivedata GenDataRand()
     return data;
 }
 
-uint16_t peer_adr = 0b001000010011;
-uint16_t self_adr = 0b111101010111;
+uint16_t base_addr = 0b101000010011;
 
 ESPMeshedNode *node = nullptr;
 void setup()
 {
     Serial.begin(115200);
-    Serial.println("Starting");
+    Serial.println("Starting slave");
+    uint16_t self_adr = WiFi.macAddress().toInt();
     node = GetESPMeshedNode(self_adr, receiveHandler);
     node->setCleanupTime(3);
     delay(3000);
@@ -58,15 +63,15 @@ void setup()
     node->print_self();
 #endif
     transceivedata data = GenDataNormal();
-    node->sendMessage((uint8_t *)&data, sizeof(data), peer_adr);
     delay(3000);
 }
 
 void loop()
 {
-    delay(1000);
-    Serial.println("Looping... w8ing for data");
-    node->handleInLoop();
+    delay(10000);
+    Serial.println("Looping...");
     transceivedata data = GenDataRand();
-    node->sendMessage((uint8_t *)&data, sizeof(data), peer_adr);
+    node->sendMessage((uint8_t *)&data, sizeof(data), base_addr);
+    node->handleInLoop();
 }
+#endif

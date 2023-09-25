@@ -77,7 +77,7 @@ private:
     uint8_t _cleanup_time = 5; // Cleanup time in seconds
     esp_now_peer_info_t _peerInfo = {};
     uint8_t _broadcastAddress[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-    void (*_receiveHandler)(uint8_t *data, uint8_t len) = NULL;
+    void (*_receiveHandler)(uint8_t *data, uint8_t len, uint16_t sender) = NULL;
     uint16_t getIDfromHeader(const uint8_t *header)
     {
         return uint16_t(header[2] << 4 | (header[3] >> 4));
@@ -294,7 +294,7 @@ public:
         }
     }
 
-    void setReceiveHandler(void (*handler)(uint8_t *data, uint8_t len))
+    void setReceiveHandler(void (*handler)(uint8_t *data, uint8_t len, uint16_t sender))
     {
         this->_receiveHandler = handler;
     }
@@ -356,7 +356,7 @@ public:
             _retransmit(incoming, len);
             return;
         }
-        this->_receiveHandler((uint8_t *)incoming + 5, len - 5);
+        this->_receiveHandler((uint8_t *)incoming + 5, len - 5, this->getNodeIdfromHeader(incoming));
     }
 };
 ESPMeshedNode *ESPMeshedNode::ESPMeshedNodeInstance = nullptr;
@@ -393,7 +393,7 @@ void ESPMeshedNode::_commonSetup()
     esp_now_add_peer(&this->_peerInfo);
 }
 
-ESPMeshedNode *GetESPMeshedNode(int ID, void (*handler)(uint8_t *data, uint8_t len))
+ESPMeshedNode *GetESPMeshedNode(int ID, void (*handler)(uint8_t *data, uint8_t len, uint16_t sender))
 {
     ESPMeshedNode *node = ESPMeshedNode::GetInstance();
     node->setNodeId(ID);
