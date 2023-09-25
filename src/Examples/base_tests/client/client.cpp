@@ -62,7 +62,7 @@ void setup()
 #ifdef DEBUG_ESP_MESHED
     node->print_self();
 #endif
-    transceivedata data = GenDataNormal();
+    // transceivedata data = GenDataNormal();
     delay(3000);
 }
 
