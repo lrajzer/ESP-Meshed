@@ -5,7 +5,7 @@
   "keywords": "ESP32, ESP8266, Mesh, Distributed, Microcontroller, Arduino, Framework, PlatformIO",
   "repository": {
     "type": "git",
-    "url": "https://github.com/username/hello-world.git"
+    "url": "https://github.com/MichalRajzer/ESP-Meshed"
   },
   "authors": [
     {
@@ -23,7 +23,6 @@
     "platformio.ini"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/MichalRajzer/ESP-Meshed",
   "dependencies": {},
   "frameworks": ["Arduino"],
   "platforms": ["espressif32", "espressif8266"]
