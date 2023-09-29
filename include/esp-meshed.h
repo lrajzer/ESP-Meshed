@@ -385,6 +385,44 @@ public:
         }
         this->_receiveHandler((uint8_t *)incoming + 5, len - 5, this->getNodeIdfromHeader(incoming));
     }
+
+#ifdef ESP_MESHED_EXTENDED_MODE
+
+    uint8_t _handlePossibleCtrlPackage(uint8_t *data, uint8_t len)
+    {
+        if (len != 6)
+        {
+            return 0;
+        }
+        if (data[6] >> 4 != 0b1111)
+        {
+            return 0;
+        }
+        switch (data[6] & 0b00001111)
+        {
+        case 0b0000:
+            // Handle ping request
+
+            return 1;
+        case 0b0001:
+            // Handle ping response
+
+            return 1;
+        case 0b0010:
+            // Handle possible speeds request
+
+            return 1;
+        case 0b0011:
+            // Handle possible speeds response
+
+            return 1;
+        default:
+
+            return 2;
+        }
+    }
+
+#endif
 };
 ESPMeshedNode *ESPMeshedNode::ESPMeshedNodeInstance = nullptr;
 
