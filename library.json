@@ -1,11 +1,11 @@
 {
   "name": "ESP Meshed",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "ESP Meshed is a framework for building distributed applications on the ESP8266 and ESP32 microcontrollers.",
   "keywords": "ESP32, ESP8266, Mesh, Distributed, Microcontroller, Arduino, Framework, PlatformIO",
   "repository": {
     "type": "git",
-    "url": "https://github.com/MichalRajzer/ESP-Meshed"
+    "url": "https://github.com/lrajzer/ESP-Meshed"
   },
   "authors": [
     {
