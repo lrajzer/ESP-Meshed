@@ -1,6 +1,6 @@
 #include <Arduino.h>
 #include <vector>
-#include <mbedtls/aes.h>
+#include <mbedtls/rsa.h>
 #include <mbedtls/sha256.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
@@ -414,12 +414,22 @@ private:
         mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy, NULL, 0);
         mbedtls_ctr_drbg_random(&ctr_drbg, private_key, 32);
         this->_private_keys[adress] = *private_key;
-        // Encrypt private key
-        mbedtls_aes_context aes;
-        mbedtls_aes_init(&aes);
-        mbedtls_aes_setkey_enc(&aes, public_key, 128);
-        uint8_t encrypted_private_key[32];
-        mbedtls_aes_crypt_ecb(&aes, MBEDTLS_AES_ENCRYPT, private_key, encrypted_private_key);
+        // Encrypt private key with RSA
+        mbedtls_rsa_context rsa;
+        mbedtls_rsa_init(&rsa, MBEDTLS_RSA_PKCS_V21, 0);
+        rsa.len = 128;
+        mbedtls_mpi_read_binary(&rsa.N, public_key, 128);
+        mbedtls_mpi_read_binary(&rsa.E, (uint8_t *)"\x01\x00\x01", 3);
+        mbedtls_mpi_read_binary(&rsa.D, private_key, 32);
+        mbedtls_mpi_read_binary(&rsa.P, private_key, 16);
+        mbedtls_mpi_read_binary(&rsa.Q, private_key + 16, 16);
+        mbedtls_mpi_read_binary(&rsa.DP, private_key, 16);
+        mbedtls_mpi_read_binary(&rsa.DQ, private_key + 16, 16);
+        mbedtls_mpi_read_binary(&rsa.QP, private_key, 16); // Uhhh yes I have no idea what I'm doing
+        mbedtls_rsa_complete(&rsa);
+        uint8_t encrypted_private_key[128];
+        mbedtls_rsa_pkcs1_encrypt(&rsa, mbedtls_ctr_drbg_random, &ctr_drbg, MBEDTLS_RSA_PUBLIC, 32, private_key, encrypted_private_key);
+
         // Send encrypted private key
         this->_sendMessage(encrypted_private_key, 32, adress, ControlPacket::PRIVATE_KEY_EXCHANGE);
     }
@@ -521,6 +531,11 @@ public:
     void setNodeId(uint16_t id)
     {
         this->_nodeId = id;
+    }
+
+    void setPublicPrivateKeyPair()
+    {
+        // TODO: IMPLEMENT
     }
 
     /**
@@ -651,16 +666,52 @@ static void _handlePackageStatic(uint8_t *mac, uint8_t *incoming, uint8_t len)
 }
 
 /**
+ * @brief Gets the ESPMeshedNode object (singleton)
+ *
+ * @return ESPMeshedNode*
+ */
+ESPMeshedNode *GetESPMeshedNode()
+{
+    return ESPMeshedNode::GetInstance();
+}
+
+/**
+ * @brief Gets the ESPMeshedNode object (singleton) and sets its adress
+ *
+ * @param adr Adress of the node
+ * @return ESPMeshedNode*
+ */
+ESPMeshedNode *GetESPMeshedNode(int adr)
+{
+    ESPMeshedNode *node = ESPMeshedNode::GetInstance();
+    node->setNodeId(adr);
+    return node;
+}
+
+/**
+ * @brief Get the ESPMeshedNode object (singleton) and sets its receive handler
+ *
+ * @param handler Receive handler
+ * @return ESPMeshedNode*
+ */
+ESPMeshedNode *GetESPMeshedNode(void (*handler)(uint8_t *data, uint8_t len, uint16_t sender))
+{
+    ESPMeshedNode *node = ESPMeshedNode::GetInstance();
+    node->setReceiveHandler(handler);
+    return node;
+}
+
+/**
  * @brief Get the ESPMeshedNode object (singleton) with the given ID and receive handler
  *
- * @param ID Adress of the node
+ * @param adr Adress of the node
  * @param handler Function to be called when a normal message is received
  * @return ESPMeshedNode* Adress of the ESPMeshedNode object
  */
-ESPMeshedNode *GetESPMeshedNode(int ID, void (*handler)(uint8_t *data, uint8_t len, uint16_t sender))
+ESPMeshedNode *GetESPMeshedNode(int adr, void (*handler)(uint8_t *data, uint8_t len, uint16_t sender))
 {
     ESPMeshedNode *node = ESPMeshedNode::GetInstance();
-    node->setNodeId(ID);
+    node->setNodeId(adr);
     node->setReceiveHandler(handler);
     return node;
 }
